@@ -1,6 +1,7 @@
 FROM python:3.11-slim
 
 WORKDIR /app
+RUN touch jobs.db
 
 # Install dependencies
 COPY requirements.txt .
