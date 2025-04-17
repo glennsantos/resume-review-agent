@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { uploadResume, saveJobDescription, getJobDescriptions } from '../api/api';
+import { compareResume, saveJobDescription, getJobDescriptions } from '../api/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const ResumeUpload = () => {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [compareResult, setCompareResult] = useState(null);
   const [jdContent, setJdContent] = useState('');
   const [jdTitle, setJdTitle] = useState('');
   const [jdLoading, setJdLoading] = useState(false);
@@ -23,7 +23,7 @@ const ResumeUpload = () => {
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
-    setResult(null);
+    setCompareResult(null);
     setError('');
   };
 
@@ -39,10 +39,10 @@ const ResumeUpload = () => {
     }
     setLoading(true);
     try {
-      const response = await uploadResume(file, selectedJdId);
-      setResult(response.data);
+      const response = await compareResume(file, selectedJdId);
+      setCompareResult(response.data);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Upload failed.');
+      setError(err.response?.data?.detail || 'Comparison failed.');
     } finally {
       setLoading(false);
     }
@@ -102,16 +102,22 @@ const ResumeUpload = () => {
           onChange={handleFileChange}
         />
         <button type="submit" disabled={loading}>
-          {loading ? 'Uploading...' : 'Submit'}
+          {loading ? 'Comparing...' : 'Compare'}
         </button>
       </form>
 
       {loading && <LoadingSpinner />}
       {error && <div className="error">{error}</div>}
-      {result && (
+      {compareResult && (
         <div className="result">
-          <h3>Score Result</h3>
-          <pre>{JSON.stringify(result, null, 2)}</pre>
+          <h3>Comparison Result</h3>
+          {compareResult.criteria?.map((c) => (
+            <div key={c.name}>
+              <strong>{c.name}:</strong> <span>{c.score_description}</span>
+            </div>
+          ))}
+          <h4>Summary</h4>
+          <p>{compareResult.summary}</p>
         </div>
       )}
 

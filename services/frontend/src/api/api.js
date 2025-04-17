@@ -13,6 +13,15 @@ export const uploadResume = (file, jdId) => {
   });
 };
 
+export const compareResume = (file, jdId) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('jd_id', jdId);
+  return axios.post(`${API_URL}/resumes/compare`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+
 export const saveJobDescription = (title, content) => {
   return axios.post(`${API_URL}/job_descriptions`, { title, content });
 };
