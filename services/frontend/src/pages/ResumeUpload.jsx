@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { uploadResume, saveJobDescription } from '../api/api';
+import React, { useState, useEffect } from 'react';
+import { uploadResume, saveJobDescription, getJobDescriptions } from '../api/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const ResumeUpload = () => {
@@ -12,6 +12,14 @@ const ResumeUpload = () => {
   const [jdLoading, setJdLoading] = useState(false);
   const [jdResult, setJdResult] = useState(null);
   const [jdError, setJdError] = useState('');
+  const [jdList, setJdList] = useState([]);
+  const [selectedJdId, setSelectedJdId] = useState('');
+
+  useEffect(() => {
+    getJobDescriptions()
+      .then(res => setJdList(res.data))
+      .catch(err => console.error('Failed to fetch JDs', err));
+  }, []);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -21,13 +29,17 @@ const ResumeUpload = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedJdId) {
+      setError('Please select a job description.');
+      return;
+    }
     if (!file) {
       setError('Please select a resume file.');
       return;
     }
     setLoading(true);
     try {
-      const response = await uploadResume(file);
+      const response = await uploadResume(file, selectedJdId);
       setResult(response.data);
     } catch (err) {
       setError(err.response?.data?.detail || 'Upload failed.');
@@ -73,6 +85,17 @@ const ResumeUpload = () => {
     <div className="resume-upload">
       <h2>Upload Resume</h2>
       <form onSubmit={handleSubmit}>
+        <select
+          value={selectedJdId}
+          onChange={(e) => setSelectedJdId(e.target.value)}
+        >
+          <option value="">Select JD</option>
+          {jdList.map((jd) => (
+            <option key={jd.id} value={jd.id}>
+              {jd.title}
+            </option>
+          ))}
+        </select>
         <input
           type="file"
           accept=".pdf,.doc,.docx"

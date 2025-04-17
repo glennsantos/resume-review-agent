@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
@@ -66,7 +66,7 @@ class JDCreate(BaseModel):
     content: str
 
 @app.post("/resumes/upload")
-async def upload_resume(file: UploadFile = File(...)):
+async def upload_resume(file: UploadFile = File(...), jd_id: int = Form(...)):
     try:
         file_location = os.path.join(UPLOAD_DIR, file.filename)
         with open(file_location, "wb") as f:
@@ -76,7 +76,8 @@ async def upload_resume(file: UploadFile = File(...)):
         event_payload = json.dumps({
             "filename": file.filename,
             "path": file_location,
-            "uploaded_at": datetime.utcnow().isoformat()
+            "uploaded_at": datetime.utcnow().isoformat(),
+            "jd_id": jd_id
         }).encode()
         try:
             await nats_client.publish("resume.uploaded", event_payload)
@@ -100,3 +101,9 @@ async def create_job_description(jd: JDCreate):
     db.commit()
     db.refresh(db_jd)
     return JSONResponse(status_code=201, content={"id": db_jd.id, "title": db_jd.title, "content": db_jd.content, "created_at": db_jd.created_at.isoformat()})
+
+@app.get("/job_descriptions")
+async def get_job_descriptions():
+    db = SessionLocal()
+    jds = db.query(JobDescription).order_by(JobDescription.id).all()
+    return JSONResponse(status_code=200, content=[{"id": jd.id, "title": jd.title} for jd in jds])
