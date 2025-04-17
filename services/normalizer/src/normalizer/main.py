@@ -49,7 +49,7 @@ async def main():
             try:
                 print("Invoking OpenAI for JSON Resume conversion...")
                 response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
+                    model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": "You are a converter that outputs valid JSON conforming to https://jsonresume.org/schema. Respond with JSON only."},
                         {"role": "user", "content": raw_text}
