@@ -18,28 +18,4 @@ A system to compare resumes against job descriptions and score fit.
 
 ## Setup
 ```bash
-# 1. Ingestion service
-cd services/ingestion
-pip3 install -r requirements.txt
-
-# 2. Start NATS server
-nats-server -DV &
-
-# 3. Run ingestion API
-uvicorn ingestion.main:app --reload --host 0.0.0.0 --port 8000
-
-# OR using Docker Compose
-cd <project-root>
-docker compose up -d --build
-```
-
-## Running the Normalizer Service
-
-```bash
-# 4. Normalizer service (local)
-cd services/normalizer
-pip3 install -r requirements.txt
-python3 src/normalizer/main.py
-
-# OR using Docker Compose
-docker compose up -d normalizer
+docker-compose up --build -d
