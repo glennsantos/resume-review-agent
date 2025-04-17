@@ -33,8 +33,8 @@ async def shutdown_event():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # frontend origin
-    allow_credentials=True,
+    allow_origins=["*"],  # allow all origins for now
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
