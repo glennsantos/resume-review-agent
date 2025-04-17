@@ -29,6 +29,15 @@ async def main():
             "filename": filename,
             "raw_text": raw_text
         }
+        # Save JSON resume to disk in uploads/json
+        uploads_dir = os.path.dirname(path)
+        json_dir = os.path.join(uploads_dir, "json")
+        os.makedirs(json_dir, exist_ok=True)
+        base_name = os.path.splitext(filename)[0] + ".json"
+        json_path = os.path.join(json_dir, base_name)
+        with open(json_path, "w", encoding="utf-8") as jf:
+            json.dump(resume_json, jf, ensure_ascii=False, indent=2)
+        print(f"Saved JSON resume to {json_path}")
         # Output raw JSON resume
         print("Raw JSON Resume:", json.dumps(resume_json))
         # Publish normalized event stub
