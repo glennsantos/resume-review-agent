@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  nats:
+    image: nats:2.9.19
+    ports:
+      - "4222:4222"
+
+  ingestion:
+    build:
+      context: ./services/ingestion
+      dockerfile: Dockerfile
+    depends_on:
+      - nats
+    environment:
+      - NATS_SERVERS=nats://nats:4222
+      - UPLOAD_DIR=uploads
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./services/ingestion/uploads:/app/uploads
+
+  normalizer:
+    build:
+      context: ./services/normalizer
+      dockerfile: Dockerfile
+    depends_on:
+      - nats
+    environment:
+      - NATS_SERVERS=nats://nats:4222
+    volumes:
+      - ./services/ingestion/uploads:/app/uploads
