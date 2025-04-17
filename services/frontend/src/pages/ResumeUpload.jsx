@@ -8,6 +8,7 @@ const ResumeUpload = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [jdContent, setJdContent] = useState('');
+  const [jdTitle, setJdTitle] = useState('');
   const [jdLoading, setJdLoading] = useState(false);
   const [jdResult, setJdResult] = useState(null);
   const [jdError, setJdError] = useState('');
@@ -41,15 +42,25 @@ const ResumeUpload = () => {
     setJdResult(null);
   };
 
+  const handleJDTitleChange = (e) => {
+    setJdTitle(e.target.value);
+    setJdError('');
+    setJdResult(null);
+  };
+
   const handleJDSubmit = async (e) => {
     e.preventDefault();
+    if (!jdTitle.trim()) {
+      setJdError('Please enter a title.');
+      return;
+    }
     if (!jdContent.trim()) {
       setJdError('Please enter a job description.');
       return;
     }
     setJdLoading(true);
     try {
-      const response = await saveJobDescription(jdContent);
+      const response = await saveJobDescription(jdTitle, jdContent);
       setJdResult(response.data);
     } catch (err) {
       setJdError(err.response?.data?.detail || 'Failed to save JD.');
@@ -84,6 +95,12 @@ const ResumeUpload = () => {
       <div className="job-description">
         <h2>Submit Job Description</h2>
         <form onSubmit={handleJDSubmit}>
+          <input
+            type="text"
+            placeholder="Title"
+            value={jdTitle}
+            onChange={handleJDTitleChange}
+          />
           <textarea
             value={jdContent}
             onChange={handleJDChange}
