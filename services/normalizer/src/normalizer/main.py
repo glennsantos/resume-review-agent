@@ -73,7 +73,7 @@ async def main():
             json.dump(resume_schema, jf, ensure_ascii=False, indent=2)
         print(f"Saved JSON resume to {json_path}")
         # Output JSON Resume schema
-        print("JSON Resume Schema:", json.dumps(resume_schema))
+        # print("JSON Resume Schema:", json.dumps(resume_schema))
         # Publish normalized event
         await nc.publish("resume.normalized", json.dumps(resume_schema).encode())
 
