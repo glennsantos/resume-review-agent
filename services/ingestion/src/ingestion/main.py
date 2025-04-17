@@ -13,6 +13,8 @@ from pydantic import BaseModel
 import openai
 import re
 from ingestion.scoring.comparison import get_compare_messages
+from PyPDF2 import PdfReader
+from io import BytesIO
 
 logging.basicConfig(level=logging.INFO)
 
@@ -69,6 +71,21 @@ class JDCreate(BaseModel):
     title: str
     content: str
 
+def clean_resume_text(text: str) -> str:
+    patterns = [
+        r'\S+@\S+',      # emails
+        r'http\S+',        # URLs
+        r'\+?\d[\d\s\-]{7,}',  # phone numbers
+        r'page\s*\d+\s*of\s*\d+', # page numbers
+    ]
+    for pat in patterns:
+        text = re.sub(pat, ' ', text, flags=re.I)
+    # remove generic headers
+    text = re.sub(r'\b(curriculum vitae|resume)\b', ' ', text, flags=re.I)
+    # collapse extra whitespace
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
 @app.post("/resumes/upload")
 async def upload_resume(file: UploadFile = File(...), jd_id: int = Form(...)):
     try:
@@ -117,10 +134,16 @@ async def compare_resume(file: UploadFile = File(...), jd_id: int = Form(...)):
     # Read resume text
     try:
         raw_bytes = await file.read()
-        raw_text = raw_bytes.decode('utf-8', errors='ignore')
+        # Extract text for PDF via pypdf, else decode bytes
+        filename_lower = file.filename.lower()
+        if filename_lower.endswith('.pdf'):
+            reader = PdfReader(BytesIO(raw_bytes))
+            raw_text = '\n'.join([page.extract_text() or '' for page in reader.pages])
+        else:
+            raw_text = raw_bytes.decode('utf-8', errors='ignore')
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to read file: {e}")
-    # Prepare smaller resume text for LLM
+        raise HTTPException(status_code=400, detail=f"Failed to process file: {e}")
+    # Attempt to load normalized JSON resume from normalizer service
     filename_no_ext = file.filename.rsplit('.', 1)[0]
     json_path = os.path.join(UPLOAD_DIR, 'json', f"{filename_no_ext}.json")
     if os.path.exists(json_path):
@@ -128,9 +151,11 @@ async def compare_resume(file: UploadFile = File(...), jd_id: int = Form(...)):
             resume_json = json.load(jf)
         sections = []
         summary = resume_json.get('basics', {}).get('summary', '')
-        sections.append(summary)
-        if resume_json.get('skills'):
-            sections.append('Skills: ' + ', '.join(resume_json['skills']))
+        if summary:
+            sections.append(summary)
+        skills = resume_json.get('skills')
+        if skills:
+            sections.append('Skills: ' + ', '.join(skills))
         for work in resume_json.get('work', []):
             title = work.get('position') or work.get('title', '')
             highlights = work.get('highlights') or work.get('description', '')
@@ -139,8 +164,9 @@ async def compare_resume(file: UploadFile = File(...), jd_id: int = Form(...)):
             sections.append(f"{title}: {highlights}")
         resume_text_for_llm = '\n'.join(sections)
     else:
-        cleaned = re.sub(r'\s+', ' ', raw_text)
-        resume_text_for_llm = cleaned[:20000]
+        # Fallback: clean and truncate raw resume text
+        resume_text_for_llm = clean_resume_text(raw_text)
+    logging.info(f"Using resume_text_for_llm (first 500 chars): {resume_text_for_llm[:500]}")
     # Fetch job description
     db = SessionLocal()
     jd = db.query(JobDescription).filter(JobDescription.id == jd_id).first()
@@ -150,12 +176,27 @@ async def compare_resume(file: UploadFile = File(...), jd_id: int = Form(...)):
     messages = get_compare_messages(jd.content, resume_text_for_llm)
     try:
         resp = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=messages,
             temperature=0
         )
         llm_output = resp.choices[0].message.content
-        data = json.loads(llm_output)
+        logging.info(f"LLM compare raw output: {llm_output[:500]}")  # log a snippet for debugging
+        if not llm_output.strip():
+            raise HTTPException(status_code=502, detail='Empty response from LLM')
+        # Strip markdown code fences
+        output_clean = re.sub(r'```(?:json)?|```', '', llm_output).strip()
+        logging.info(f"LLM compare cleaned output: {output_clean[:500]}")
+        # Parse JSON, extract JSON substring on failure
+        try:
+            data = json.loads(output_clean)
+        except json.JSONDecodeError:
+            m = re.search(r'\{.*\}', output_clean, flags=re.S)
+            if m:
+                data = json.loads(m.group(0))
+            else:
+                err_snip = output_clean[:200]
+                raise HTTPException(status_code=502, detail=f"Invalid JSON from LLM: {err_snip}")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"LLM error or invalid JSON: {e}")
     return JSONResponse(status_code=200, content=data)

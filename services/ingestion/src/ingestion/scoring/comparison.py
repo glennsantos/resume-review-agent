@@ -1,8 +1,9 @@
 from typing import List, Dict
 
 SYSTEM_PROMPT = (
-    "You are a career coach. Compare the resume text to the job description. "
-    "Provide a JSON object with two keys: 'criteria' (list of {name, score_description}), and 'summary' (text summary)."
+    "You are a career coach. Compare a candidate's resume against the job description. "
+    "Return only a single JSON object with exactly two keys: 'criteria' (list of {name: string, score_description: string}) "
+    "and 'summary' (a concise summary of how the resume matches). Do not include markdown, explanations, or code fences."
 )
 
 def get_compare_messages(jd_content: str, resume_text: str) -> List[Dict[str, str]]:

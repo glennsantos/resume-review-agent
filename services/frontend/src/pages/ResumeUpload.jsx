@@ -74,6 +74,18 @@ const ResumeUpload = () => {
     try {
       const response = await saveJobDescription(jdTitle, jdContent);
       setJdResult(response.data);
+      // Refresh JD list and auto-select new JD
+      const newJd = response.data;
+      try {
+        const listRes = await getJobDescriptions();
+        setJdList(listRes.data);
+        setSelectedJdId(newJd.id);
+      } catch (err) {
+        console.error('Failed to refresh JD list', err);
+      }
+      // Clear JD form fields
+      setJdTitle('');
+      setJdContent('');
     } catch (err) {
       setJdError(err.response?.data?.detail || 'Failed to save JD.');
     } finally {
