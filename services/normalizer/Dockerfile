@@ -13,4 +13,4 @@ COPY src/ /app/src
 ENV PYTHONPATH=/app/src
 
 # Run the normalizer subscriber
-CMD ["python3", "normalizer/main.py"]
+CMD ["python3", "src/normalizer/main.py"]
