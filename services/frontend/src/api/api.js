@@ -11,3 +11,7 @@ export const uploadResume = (file) => {
     },
   });
 };
+
+export const saveJobDescription = (content) => {
+  return axios.post(`${API_URL}/job_descriptions`, { content });
+};

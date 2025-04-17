@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { uploadResume } from '../api/api';
+import { uploadResume, saveJobDescription } from '../api/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const ResumeUpload = () => {
@@ -7,6 +7,10 @@ const ResumeUpload = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [jdContent, setJdContent] = useState('');
+  const [jdLoading, setJdLoading] = useState(false);
+  const [jdResult, setJdResult] = useState(null);
+  const [jdError, setJdError] = useState('');
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -28,6 +32,29 @@ const ResumeUpload = () => {
       setError(err.response?.data?.detail || 'Upload failed.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleJDChange = (e) => {
+    setJdContent(e.target.value);
+    setJdError('');
+    setJdResult(null);
+  };
+
+  const handleJDSubmit = async (e) => {
+    e.preventDefault();
+    if (!jdContent.trim()) {
+      setJdError('Please enter a job description.');
+      return;
+    }
+    setJdLoading(true);
+    try {
+      const response = await saveJobDescription(jdContent);
+      setJdResult(response.data);
+    } catch (err) {
+      setJdError(err.response?.data?.detail || 'Failed to save JD.');
+    } finally {
+      setJdLoading(false);
     }
   };
 
@@ -53,6 +80,27 @@ const ResumeUpload = () => {
           <pre>{JSON.stringify(result, null, 2)}</pre>
         </div>
       )}
+
+      <div className="job-description">
+        <h2>Submit Job Description</h2>
+        <form onSubmit={handleJDSubmit}>
+          <textarea
+            value={jdContent}
+            onChange={handleJDChange}
+            placeholder="Paste job description here..."
+            rows={5}
+          />
+          <button type="submit" disabled={jdLoading}>
+            {jdLoading ? 'Saving...' : 'Save JD'}
+          </button>
+        </form>
+        {jdError && <div className="error">{jdError}</div>}
+        {jdResult && (
+          <div className="jd-result">
+            <p>Saved JD id: {jdResult.id}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

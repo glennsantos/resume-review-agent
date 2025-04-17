@@ -2,3 +2,4 @@ fastapi==0.95.2
 uvicorn[standard]==0.23.1
 python-multipart==0.0.6
 nats-py==2.4.0
+SQLAlchemy==1.4.47

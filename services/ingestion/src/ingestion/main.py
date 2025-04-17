@@ -6,6 +6,10 @@ import json
 from datetime import datetime
 from nats.aio.client import Client as NATS
 import logging
+from sqlalchemy import create_engine, Column, Integer, Text, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from pydantic import BaseModel
 
 logging.basicConfig(level=logging.INFO)
 
@@ -40,6 +44,25 @@ env_dir = os.getenv("UPLOAD_DIR", "uploads")
 UPLOAD_DIR = os.path.join(os.getcwd(), env_dir)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# SQLAlchemy setup
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./jobs.db")
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+class JobDescription(Base):
+    __tablename__ = "job_descriptions"
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+# Create tables
+Base.metadata.create_all(bind=engine)
+
+# Pydantic model for job description
+class JDCreate(BaseModel):
+    content: str
+
 @app.post("/resumes/upload")
 async def upload_resume(file: UploadFile = File(...)):
     try:
@@ -66,3 +89,12 @@ async def upload_resume(file: UploadFile = File(...)):
         })
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/job_descriptions")
+async def create_job_description(jd: JDCreate):
+    db = SessionLocal()
+    db_jd = JobDescription(content=jd.content)
+    db.add(db_jd)
+    db.commit()
+    db.refresh(db_jd)
+    return JSONResponse(status_code=201, content={"id": db_jd.id, "content": db_jd.content, "created_at": db_jd.created_at.isoformat()})
