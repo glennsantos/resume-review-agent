@@ -5,6 +5,8 @@ import asyncio
 import os
 import json
 from nats.aio.client import Client as NATS
+import openai
+import jsonschema  # for future schema validation
 
 async def main():
     # Connect to NATS
@@ -24,7 +26,7 @@ async def main():
         except Exception as e:
             print(f"Error reading file {path}: {e}")
             return
-        # Build JSON Resume schema
+        # Build basic JSON Resume schema
         base_name_no_ext = os.path.splitext(filename)[0]
         # Remove 'CV - ' prefix if present
         if base_name_no_ext.lower().startswith("cv - "):
@@ -40,6 +42,27 @@ async def main():
             "education": [],
             "skills": []
         }
+        # Attempt to enhance/replace schema using OpenAI LLM
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key:
+            openai.api_key = api_key
+            try:
+                print("Invoking OpenAI for JSON Resume conversion...")
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a converter that outputs valid JSON conforming to https://jsonresume.org/schema. Respond with JSON only."},
+                        {"role": "user", "content": raw_text}
+                    ],
+                    temperature=0
+                )
+                llm_output = response.choices[0].message.content
+                resume_schema = json.loads(llm_output)
+                print("Converted resume via OpenAI LLM.")
+            except Exception as e:
+                print(f"OpenAI error: {e}. Using basic schema.")
+        else:
+            print("OPENAI_API_KEY not set; using basic schema.")
         # Save JSON resume to disk in uploads/json
         uploads_dir = os.path.dirname(path)
         json_dir = os.path.join(uploads_dir, "json")
