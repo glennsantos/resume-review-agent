@@ -12,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
 import openai
 import re
+from ingestion.scoring.comparison import get_compare_messages
 
 logging.basicConfig(level=logging.INFO)
 
@@ -145,19 +146,12 @@ async def compare_resume(file: UploadFile = File(...), jd_id: int = Form(...)):
     jd = db.query(JobDescription).filter(JobDescription.id == jd_id).first()
     if not jd:
         raise HTTPException(status_code=404, detail="Job description not found")
-    # Build and send prompt to LLM
-    system_prompt = (
-        "You are a career coach. Compare the resume text to the job description. "
-        "Provide a JSON object with two keys: 'criteria' (list of {name, score_description}), and 'summary' (text summary)."
-    )
-    user_prompt = f"Job Description:\n{jd.content}\n\nResume Text:\n{resume_text_for_llm}"
+    # Build messages payload for LLM
+    messages = get_compare_messages(jd.content, resume_text_for_llm)
     try:
         resp = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
+            messages=messages,
             temperature=0
         )
         llm_output = resp.choices[0].message.content
