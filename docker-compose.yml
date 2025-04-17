@@ -37,6 +37,19 @@ services:
     networks:
       - rra-net
 
+  frontend:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - ingestion
+    environment:
+      - REACT_APP_API_URL=http://ingestion:8000
+    ports:
+      - "3000:3000"
+    networks:
+      - rra-net
+
 networks:
   rra-net:
     driver: bridge
