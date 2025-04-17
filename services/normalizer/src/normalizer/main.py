@@ -24,10 +24,21 @@ async def main():
         except Exception as e:
             print(f"Error reading file {path}: {e}")
             return
-        # Construct raw JSON resume
-        resume_json = {
-            "filename": filename,
-            "raw_text": raw_text
+        # Build JSON Resume schema
+        base_name_no_ext = os.path.splitext(filename)[0]
+        # Remove 'CV - ' prefix if present
+        if base_name_no_ext.lower().startswith("cv - "):
+            candidate_name = base_name_no_ext[5:].strip()
+        else:
+            candidate_name = base_name_no_ext
+        resume_schema = {
+            "basics": {
+                "name": candidate_name,
+                "summary": raw_text
+            },
+            "work": [],
+            "education": [],
+            "skills": []
         }
         # Save JSON resume to disk in uploads/json
         uploads_dir = os.path.dirname(path)
@@ -36,12 +47,12 @@ async def main():
         base_name = os.path.splitext(filename)[0] + ".json"
         json_path = os.path.join(json_dir, base_name)
         with open(json_path, "w", encoding="utf-8") as jf:
-            json.dump(resume_json, jf, ensure_ascii=False, indent=2)
+            json.dump(resume_schema, jf, ensure_ascii=False, indent=2)
         print(f"Saved JSON resume to {json_path}")
-        # Output raw JSON resume
-        print("Raw JSON Resume:", json.dumps(resume_json))
-        # Publish normalized event stub
-        await nc.publish("resume.normalized", json.dumps(resume_json).encode())
+        # Output JSON Resume schema
+        print("JSON Resume Schema:", json.dumps(resume_schema))
+        # Publish normalized event
+        await nc.publish("resume.normalized", json.dumps(resume_schema).encode())
 
     await nc.subscribe("resume.uploaded", cb=message_handler)
     print("Listening for 'resume.uploaded' events...")
