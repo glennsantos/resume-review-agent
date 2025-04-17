@@ -37,6 +37,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - ./services/ingestion/uploads:/app/uploads
+      - ./services/ingestion/jobs.db:/app/jobs.db
     networks:
       - rra-net
 
