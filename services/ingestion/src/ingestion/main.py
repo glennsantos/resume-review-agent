@@ -10,6 +10,8 @@ from sqlalchemy import create_engine, Column, Integer, Text, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from pydantic import BaseModel
+import openai
+import re
 
 logging.basicConfig(level=logging.INFO)
 
@@ -59,6 +61,7 @@ class JobDescription(Base):
 
 # Create tables
 Base.metadata.create_all(bind=engine)
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Pydantic model for job description
 class JDCreate(BaseModel):
@@ -107,3 +110,58 @@ async def get_job_descriptions():
     db = SessionLocal()
     jds = db.query(JobDescription).order_by(JobDescription.id).all()
     return JSONResponse(status_code=200, content=[{"id": jd.id, "title": jd.title} for jd in jds])
+
+@app.post("/resumes/compare")
+async def compare_resume(file: UploadFile = File(...), jd_id: int = Form(...)):
+    # Read resume text
+    try:
+        raw_bytes = await file.read()
+        raw_text = raw_bytes.decode('utf-8', errors='ignore')
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {e}")
+    # Prepare smaller resume text for LLM
+    filename_no_ext = file.filename.rsplit('.', 1)[0]
+    json_path = os.path.join(UPLOAD_DIR, 'json', f"{filename_no_ext}.json")
+    if os.path.exists(json_path):
+        with open(json_path, 'r', encoding='utf-8') as jf:
+            resume_json = json.load(jf)
+        sections = []
+        summary = resume_json.get('basics', {}).get('summary', '')
+        sections.append(summary)
+        if resume_json.get('skills'):
+            sections.append('Skills: ' + ', '.join(resume_json['skills']))
+        for work in resume_json.get('work', []):
+            title = work.get('position') or work.get('title', '')
+            highlights = work.get('highlights') or work.get('description', '')
+            if isinstance(highlights, list):
+                highlights = '; '.join(highlights)
+            sections.append(f"{title}: {highlights}")
+        resume_text_for_llm = '\n'.join(sections)
+    else:
+        cleaned = re.sub(r'\s+', ' ', raw_text)
+        resume_text_for_llm = cleaned[:20000]
+    # Fetch job description
+    db = SessionLocal()
+    jd = db.query(JobDescription).filter(JobDescription.id == jd_id).first()
+    if not jd:
+        raise HTTPException(status_code=404, detail="Job description not found")
+    # Build and send prompt to LLM
+    system_prompt = (
+        "You are a career coach. Compare the resume text to the job description. "
+        "Provide a JSON object with two keys: 'criteria' (list of {name, score_description}), and 'summary' (text summary)."
+    )
+    user_prompt = f"Job Description:\n{jd.content}\n\nResume Text:\n{resume_text_for_llm}"
+    try:
+        resp = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0
+        )
+        llm_output = resp.choices[0].message.content
+        data = json.loads(llm_output)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"LLM error or invalid JSON: {e}")
+    return JSONResponse(status_code=200, content=data)
