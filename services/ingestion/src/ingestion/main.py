@@ -33,8 +33,8 @@ async def shutdown_event():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=["http://localhost:3000"],  # frontend origin
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -53,6 +53,7 @@ Base = declarative_base()
 class JobDescription(Base):
     __tablename__ = "job_descriptions"
     id = Column(Integer, primary_key=True, index=True)
+    title = Column(Text, nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -61,6 +62,7 @@ Base.metadata.create_all(bind=engine)
 
 # Pydantic model for job description
 class JDCreate(BaseModel):
+    title: str
     content: str
 
 @app.post("/resumes/upload")
@@ -93,8 +95,8 @@ async def upload_resume(file: UploadFile = File(...)):
 @app.post("/job_descriptions")
 async def create_job_description(jd: JDCreate):
     db = SessionLocal()
-    db_jd = JobDescription(content=jd.content)
+    db_jd = JobDescription(title=jd.title, content=jd.content)
     db.add(db_jd)
     db.commit()
     db.refresh(db_jd)
-    return JSONResponse(status_code=201, content={"id": db_jd.id, "content": db_jd.content, "created_at": db_jd.created_at.isoformat()})
+    return JSONResponse(status_code=201, content={"id": db_jd.id, "title": db_jd.title, "content": db_jd.content, "created_at": db_jd.created_at.isoformat()})
