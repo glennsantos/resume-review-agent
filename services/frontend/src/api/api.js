@@ -29,3 +29,11 @@ export const saveJobDescription = (title, content) => {
 export const getJobDescriptions = () => {
   return axios.get(`${API_URL}/job_descriptions`);
 };
+
+export const getJobDescription = (id) => {
+  return axios.get(`${API_URL}/job_descriptions/${id}`);
+};
+
+export const updateJobDescription = (id, title, content) => {
+  return axios.put(`${API_URL}/job_descriptions/${id}`, { title, content });
+};

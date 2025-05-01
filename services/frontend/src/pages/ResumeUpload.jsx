@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { compareResume, saveJobDescription, getJobDescriptions } from '../api/api';
+import { compareResume, saveJobDescription, getJobDescriptions, getJobDescription, updateJobDescription } from '../api/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const ResumeUpload = () => {
@@ -14,6 +14,8 @@ const ResumeUpload = () => {
   const [jdError, setJdError] = useState('');
   const [jdList, setJdList] = useState([]);
   const [selectedJdId, setSelectedJdId] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     getJobDescriptions()
@@ -34,7 +36,7 @@ const ResumeUpload = () => {
       return;
     }
     if (!file) {
-      setError('Please select a resume file.');
+      setError('Please select a CV file.');
       return;
     }
     setLoading(true);
@@ -72,9 +74,16 @@ const ResumeUpload = () => {
     }
     setJdLoading(true);
     try {
-      const response = await saveJobDescription(jdTitle, jdContent);
-      setJdResult(response.data);
-      // Refresh JD list and auto-select new JD
+      let response;
+      if (isEditing && editingId) {
+        response = await updateJobDescription(editingId, jdTitle, jdContent);
+        setJdResult({ ...response.data, message: 'Job description updated successfully!' });
+      } else {
+        response = await saveJobDescription(jdTitle, jdContent);
+        setJdResult({ ...response.data, message: 'Job description saved successfully!' });
+      }
+      
+      // Refresh JD list and auto-select new/updated JD
       const newJd = response.data;
       try {
         const listRes = await getJobDescriptions();
@@ -83,9 +92,12 @@ const ResumeUpload = () => {
       } catch (err) {
         console.error('Failed to refresh JD list', err);
       }
-      // Clear JD form fields
+      
+      // Clear form and reset editing state
       setJdTitle('');
       setJdContent('');
+      setIsEditing(false);
+      setEditingId(null);
     } catch (err) {
       setJdError(err.response?.data?.detail || 'Failed to save JD.');
     } finally {
@@ -93,26 +105,70 @@ const ResumeUpload = () => {
     }
   };
 
+  const handleEditJD = async (id) => {
+    try {
+      setJdLoading(true);
+      const response = await getJobDescription(id);
+      const jd = response.data;
+      setJdTitle(jd.title);
+      setJdContent(jd.content);
+      setIsEditing(true);
+      setEditingId(id);
+      setJdError('');
+      setJdResult(null);
+    } catch (err) {
+      setJdError(err.response?.data?.detail || 'Failed to load job description for editing.');
+    } finally {
+      setJdLoading(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setJdTitle('');
+    setJdContent('');
+    setIsEditing(false);
+    setEditingId(null);
+    setJdError('');
+    setJdResult(null);
+  };
+
   return (
-    <div className="resume-upload">
-      <h2>Upload Resume</h2>
+    <div className="cv-upload">
+      <h2>Upload CV</h2>
       <form onSubmit={handleSubmit}>
-        <select
-          value={selectedJdId}
-          onChange={(e) => setSelectedJdId(e.target.value)}
-        >
-          <option value="">Select JD</option>
-          {jdList.map((jd) => (
-            <option key={jd.id} value={jd.id}>
-              {jd.title}
-            </option>
-          ))}
-        </select>
-        <input
-          type="file"
-          accept=".pdf,.doc,.docx"
-          onChange={handleFileChange}
-        />
+        <div className="form-group">
+          <label htmlFor="jd-select">Select Job Description:</label>
+          <select
+            id="jd-select"
+            value={selectedJdId}
+            onChange={(e) => setSelectedJdId(e.target.value)}
+          >
+            <option value="">Select JD</option>
+            {jdList.map((jd) => (
+              <option key={jd.id} value={jd.id}>
+                {jd.title}
+              </option>
+            ))}
+          </select>
+          {selectedJdId && (
+            <button 
+              type="button" 
+              className="edit-button"
+              onClick={() => handleEditJD(selectedJdId)}
+            >
+              Edit
+            </button>
+          )}
+        </div>
+        <div className="form-group">
+          <label htmlFor="cv-file">Upload CV:</label>
+          <input
+            id="cv-file"
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={handleFileChange}
+          />
+        </div>
         <button type="submit" disabled={loading}>
           {loading ? 'Comparing...' : 'Compare'}
         </button>
@@ -122,7 +178,7 @@ const ResumeUpload = () => {
       {error && <div className="error">{error}</div>}
       {compareResult && (
         <div className="result">
-          <h3>Comparison Result</h3>
+          <h3>CV-JD Comparison Result</h3>
           {compareResult.criteria?.map((c) => (
             <div key={c.name}>
               <strong>{c.name}:</strong> <span>{c.score_description}</span>
@@ -134,28 +190,43 @@ const ResumeUpload = () => {
       )}
 
       <div className="job-description">
-        <h2>Submit Job Description</h2>
+        <h2>{isEditing ? 'Edit Job Description' : 'Add New Job Description'}</h2>
         <form onSubmit={handleJDSubmit}>
-          <input
-            type="text"
-            placeholder="Title"
-            value={jdTitle}
-            onChange={handleJDTitleChange}
-          />
-          <textarea
-            value={jdContent}
-            onChange={handleJDChange}
-            placeholder="Paste job description here..."
-            rows={5}
-          />
-          <button type="submit" disabled={jdLoading}>
-            {jdLoading ? 'Saving...' : 'Save JD'}
-          </button>
+          <div className="form-group">
+            <label htmlFor="jd-title">Title:</label>
+            <input
+              id="jd-title"
+              type="text"
+              placeholder="Title"
+              value={jdTitle}
+              onChange={handleJDTitleChange}
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="jd-content">Content:</label>
+            <textarea
+              id="jd-content"
+              value={jdContent}
+              onChange={handleJDChange}
+              placeholder="Paste job description here..."
+              rows={10}
+            />
+          </div>
+          <div className="button-group">
+            <button type="submit" disabled={jdLoading}>
+              {jdLoading ? 'Saving...' : isEditing ? 'Update JD' : 'Save JD'}
+            </button>
+            {isEditing && (
+              <button type="button" onClick={handleCancelEdit}>
+                Cancel
+              </button>
+            )}
+          </div>
         </form>
         {jdError && <div className="error">{jdError}</div>}
         {jdResult && (
-          <div className="jd-result">
-            <p>Saved JD id: {jdResult.id}</p>
+          <div className="jd-result success">
+            <p>{jdResult.message || `Saved JD id: ${jdResult.id}`}</p>
           </div>
         )}
       </div>

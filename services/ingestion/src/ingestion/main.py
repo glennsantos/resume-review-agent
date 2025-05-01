@@ -71,6 +71,10 @@ class JDCreate(BaseModel):
     title: str
     content: str
 
+class JDUpdate(BaseModel):
+    title: str
+    content: str
+
 def clean_resume_text(text: str) -> str:
     patterns = [
         r'\S+@\S+',      # emails
@@ -128,6 +132,27 @@ async def get_job_descriptions():
     db = SessionLocal()
     jds = db.query(JobDescription).order_by(JobDescription.id).all()
     return JSONResponse(status_code=200, content=[{"id": jd.id, "title": jd.title} for jd in jds])
+
+@app.get("/job_descriptions/{jd_id}")
+async def get_job_description(jd_id: int):
+    db = SessionLocal()
+    jd = db.query(JobDescription).filter(JobDescription.id == jd_id).first()
+    if not jd:
+        raise HTTPException(status_code=404, detail="Job description not found")
+    return JSONResponse(status_code=200, content={"id": jd.id, "title": jd.title, "content": jd.content, "created_at": jd.created_at.isoformat()})
+
+@app.put("/job_descriptions/{jd_id}")
+async def update_job_description(jd_id: int, jd: JDUpdate):
+    db = SessionLocal()
+    db_jd = db.query(JobDescription).filter(JobDescription.id == jd_id).first()
+    if not db_jd:
+        raise HTTPException(status_code=404, detail="Job description not found")
+    
+    db_jd.title = jd.title
+    db_jd.content = jd.content
+    db.commit()
+    db.refresh(db_jd)
+    return JSONResponse(status_code=200, content={"id": db_jd.id, "title": db_jd.title, "content": db_jd.content, "created_at": db_jd.created_at.isoformat()})
 
 @app.post("/resumes/compare")
 async def compare_resume(file: UploadFile = File(...), jd_id: int = Form(...)):

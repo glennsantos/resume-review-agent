@@ -2,20 +2,44 @@
   padding: 1rem;
   font-family: Arial, sans-serif;
 }
-.resume-upload {
-  max-width: 500px;
+
+/* Header styles */
+.app-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #4285f4;
+}
+
+.app-header h1 {
+  font-size: 2.5rem;
+  color: #4285f4;
+  margin-bottom: 0.5rem;
+}
+
+.app-header .subtitle {
+  font-size: 1.2rem;
+  color: #666;
+  margin-top: 0;
+}
+
+.cv-upload {
+  max-width: 800px;
   margin: 2rem auto;
 }
-.resume-upload form {
+
+.cv-upload form {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
+
 .loading-spinner {
   display: flex;
   justify-content: center;
   margin-top: 1rem;
 }
+
 .spinner {
   width: 40px;
   height: 40px;
@@ -24,16 +48,119 @@
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
 .error {
   color: red;
   margin-top: 1rem;
 }
+
 .result {
   background: #f9f9f9;
   padding: 1rem;
   margin-top: 1rem;
   border-radius: 4px;
+}
+
+/* New styles for job description editing */
+.form-group {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.form-group select,
+.form-group input,
+.form-group textarea {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.form-group textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+button:hover {
+  background-color: #3367d6;
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+button.edit-button {
+  background-color: #34a853;
+  margin-top: 0.5rem;
+}
+
+button.edit-button:hover {
+  background-color: #2d9249;
+}
+
+.job-description {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #eee;
+}
+
+.success {
+  color: #34a853;
+  background-color: #e6f4ea;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-top: 1rem;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .form-group {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .form-group label {
+    width: 150px;
+    margin-bottom: 0;
+  }
+  
+  .form-group select,
+  .form-group input {
+    flex: 1;
+  }
+  
+  .form-group textarea {
+    flex: 1;
+  }
+  
+  .form-group button.edit-button {
+    margin-top: 0;
+    margin-left: 1rem;
+  }
 }

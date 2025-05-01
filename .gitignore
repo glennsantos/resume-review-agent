@@ -1,0 +1,9 @@
+# Node modules
+/services/frontend/node_modules/
+
+# Environment files
+/services/frontend/.env
+
+# Uploaded resumes
+/services/ingestion/uploads/
+.env
