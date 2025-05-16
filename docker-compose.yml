@@ -19,7 +19,7 @@ services:
       - UPLOAD_DIR=uploads
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     ports:
-      - "8000:8000"
+      - "0.0.0.0:8000:8000"
     volumes:
       - ./services/ingestion/uploads:/app/uploads
       - ./services/ingestion/jobs.db:/app/jobs.db
@@ -48,9 +48,9 @@ services:
     depends_on:
       - ingestion
     environment:
-      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_API_URL=http://192.168.254.109:8000
     ports:
-      - "3000:3000"
+      - "0.0.0.0:3000:3000"
     networks:
       - rra-net
 
