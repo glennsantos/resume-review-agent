@@ -1,6 +1,16 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// Get the current hostname and port
+const { hostname, protocol } = window.location;
+const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
+
+// If we're running locally, use the environment variable or default to localhost:8000
+// Otherwise, use the current hostname with port 8000 for the API
+const API_URL = isLocalhost 
+  ? (process.env.REACT_APP_API_URL || 'http://localhost:8000')
+  : `${protocol}//${hostname}:8000`;
+
+console.log('Using API URL:', API_URL);
 
 export const uploadResume = (file, jdId) => {
   const formData = new FormData();
