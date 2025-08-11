@@ -48,7 +48,7 @@ services:
     depends_on:
       - ingestion
     ports:
-      - "3000:3000"
+      - "4000:4000"
     environment:
       - CHOKIDAR_USEPOLLING=true
     networks:
